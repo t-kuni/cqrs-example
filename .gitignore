@@ -1,0 +1,23 @@
+/.idea
+.env
+.env.testing
+*.log
+
+# go mock
+*_mock.go
+
+# ent
+/ent/*
+!/ent/schema
+!/ent/generate.go
+
+# go-swagger
+/cmd
+/restapi/*
+!/restapi/configure_*
+
+# coverage
+coverage/*
+!coverage/.gitingore
+
+.sisho

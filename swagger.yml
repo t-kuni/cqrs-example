@@ -1,0 +1,354 @@
+swagger: '2.0'
+info:
+  description: From the todo list tutorial on goswagger.io
+  title: A Todo list application
+  version: 1.0.0
+consumes:
+  - application/io.goswagger.examples.todo-list.v1+json
+produces:
+  - application/io.goswagger.examples.todo-list.v1+json
+schemes:
+  - http
+  - https
+paths:
+  /todos:
+    get:
+      tags:
+        - todos
+      operationId: get-todos
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          format: int64
+        - name: status
+          in: query
+          type: string
+          format: int32
+      responses:
+        '200':
+          description: list the todo operations
+          schema:
+            type: object
+            properties:
+              todos:
+                x-stoplight:
+                  id: 3f43y35zd46f9
+                type: array
+                items:
+                  $ref: '#/definitions/Todo'
+              page:
+                type: integer
+                x-stoplight:
+                  id: 689uxkengkax1
+              maxPage:
+                type: integer
+                x-stoplight:
+                  id: 7wu4oppx3rgos
+            required:
+              - todos
+              - page
+              - maxPage
+        default:
+          description: generic error response
+          schema:
+            $ref: '#/definitions/error'
+      description: get todos
+    post:
+      tags:
+        - todos
+      operationId: post-todos
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Todo'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Todo'
+      description: post todos
+    parameters: []
+  '/todos/{id}':
+    parameters:
+      - type: integer
+        format: int64
+        name: id
+        in: path
+        required: true
+    delete:
+      tags:
+        - todos
+      operationId: delete-todos
+      responses:
+        '204':
+          description: Deleted
+        default:
+          description: error
+          schema:
+            $ref: '#/definitions/error'
+      description: delete todos
+  /companies:
+    get:
+      summary: Your GET endpoint
+      tags:
+        - companies
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              companies:
+                type: array
+                items:
+                  $ref: '#/definitions/Company'
+            required:
+              - companies
+      operationId: get-companies
+      description: get companies
+  '/companies/{id}/users':
+    get:
+      summary: Your GET endpoint
+      tags:
+        - companies
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              users:
+                type: array
+                items:
+                  $ref: '#/definitions/User'
+            required:
+              - users
+      operationId: get-companies-users
+      description: get users
+    parameters:
+      - type: string
+        name: id
+        in: path
+        required: true
+  /users:
+    get:
+      summary: Your GET endpoint
+      tags:
+        - user
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              users:
+                type: array
+                x-stoplight:
+                  id: 4k5wjood9wprc
+                items:
+                  $ref: '#/definitions/User'
+              page:
+                type: integer
+                x-stoplight:
+                  id: ikf55ng4hv260
+              maxPage:
+                type: integer
+                x-stoplight:
+                  id: mc1t21lvgya7d
+            required:
+              - users
+              - page
+              - maxPage
+      operationId: get-users
+      description: get users
+      parameters:
+        - type: integer
+          in: query
+          name: page
+    post:
+      summary: ''
+      operationId: post-users
+      responses:
+        '200':
+          description: OK
+      description: post user
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/User'
+      tags:
+        - user
+  '/users/{id}':
+    parameters:
+      - type: string
+        name: id
+        in: path
+        required: true
+    delete:
+      summary: ''
+      operationId: delete-users-id
+      responses:
+        '204':
+          description: No Content
+          schema:
+            type: object
+            properties: {}
+      description: delete user
+      tags:
+        - user
+  '/users/{id}/todos':
+    parameters:
+      - type: string
+        name: id
+        in: path
+        required: true
+    post:
+      summary: ''
+      operationId: post-users-id-todos
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties: {}
+      description: |-
+        Todoを作成また更新します
+        idが指定されていない場合は新規で作成します。指定された場合は更新します。
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/Todo'
+          description: ''
+definitions:
+  Todo:
+    type: object
+    x-stoplight:
+      id: 66711535045f0
+    title: todo
+    properties:
+      id:
+        type: string
+        format: uuid
+        description: |-
+          （post APIの場合）
+          nullの場合は新規作成を行う（バックエンドでUUIDを採番する）
+          指定がある場合は更新を行う
+        x-nullable: true
+      title:
+        type: string
+        x-stoplight:
+          id: 7p8s754pkvx9o
+        maxLength: 50
+      description:
+        type: string
+        maxLength: 500
+      status:
+        type: string
+        x-stoplight:
+          id: 5wr8ny716fi7v
+        enum:
+          - none
+          - progress
+          - pending
+          - complated
+      completed:
+        type: boolean
+        readOnly: true
+      completed_at:
+        type: string
+        x-stoplight:
+          id: lb297jodx4ra3
+        format: date-time
+        readOnly: true
+      owner:
+        $ref: '#/definitions/User'
+    required:
+      - id
+      - title
+      - description
+      - status
+      - completed
+      - completed_at
+      - owner
+  error:
+    type: object
+    required:
+      - message
+    properties:
+      code:
+        type: integer
+        format: int64
+      message:
+        type: string
+  User:
+    title: User
+    x-stoplight:
+      id: k1mjvox6qaijv
+    type: object
+    x-tags:
+      - user
+    properties:
+      id:
+        type: string
+        x-stoplight:
+          id: nns3slpn43z9v
+        format: uuid
+        x-nullable: true
+      name:
+        type: string
+        x-stoplight:
+          id: rwsev9ipd0ium
+        maxLength: 50
+      gender:
+        type: string
+        x-stoplight:
+          id: h6lwovdp7fke9
+        enum:
+          - man
+          - woman
+      age:
+        type: integer
+        x-stoplight:
+          id: bnplszvfw513r
+        minimum: 18
+        exclusiveMinimum: false
+        exclusiveMaximum: false
+        maximum: 99
+      company:
+        $ref: '#/definitions/Company'
+    required:
+      - id
+      - name
+      - gender
+      - age
+      - company
+  Company:
+    title: Company
+    x-stoplight:
+      id: xhz6wrg696hfz
+    type: object
+    x-tags:
+      - user
+    properties:
+      id:
+        type: string
+        x-stoplight:
+          id: nns3slpn43z9v
+        format: uuid
+        x-nullable: true
+      name:
+        type: string
+        x-stoplight:
+          id: rwsev9ipd0ium
+        maxLength: 50
+    required:
+      - id
+      - name
+tags:
+  - name: companies
+  - name: todos
+  - name: user

@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: local-env/app
+      target: dev
+    ports:
+      - 34567:80
+      - 34568:2345
+    volumes:
+      - ./:/app
+    command: air -d
+    restart: always
+
+  db:
+    build:
+      context: local-env/db
+    ports:
+      - 33060:3306
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql/
+      - ./local-env/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  db-viewer:
+    image: phpmyadmin/phpmyadmin:5.1.1
+    ports:
+      - 8080:80
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=${DB_HOST}
+      - PMA_USER=${DB_USER}
+      - PMA_PASSWORD=${DB_PASSWORD}
+    restart: always
+
+volumes:
+  db-data:
