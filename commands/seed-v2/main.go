@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,6 +52,32 @@ func main() {
 				panic(err)
 			}
 			fmt.Printf("Truncated table: %s\n", table)
+		}
+
+		// productsテーブルのキー・インデックス情報を取得
+		fmt.Println("Backing up products table indexes and foreign keys...")
+		indexes, err := getProductsIndexes(db)
+		if err != nil {
+			panic(fmt.Errorf("failed to get products indexes: %w", err))
+		}
+		fmt.Printf("  Found %d index(es)\n", len(indexes))
+
+		foreignKeys, err := getProductsForeignKeys(db)
+		if err != nil {
+			panic(fmt.Errorf("failed to get products foreign keys: %w", err))
+		}
+		fmt.Printf("  Found %d foreign key(s)\n", len(foreignKeys))
+
+		// productsテーブルのキー・インデックスを削除
+		fmt.Println("Dropping products table indexes and foreign keys...")
+		err = dropProductsForeignKeys(db, foreignKeys)
+		if err != nil {
+			panic(fmt.Errorf("failed to drop products foreign keys: %w", err))
+		}
+
+		err = dropProductsIndexes(db, indexes)
+		if err != nil {
+			panic(fmt.Errorf("failed to drop products indexes: %w", err))
 		}
 
 		// CSV ファイルの出力先ディレクトリ
@@ -154,6 +182,18 @@ func main() {
 			panic(err)
 		}
 		fmt.Println("  Loaded products")
+
+		// productsテーブルのキー・インデックスを復元
+		fmt.Println("Restoring products table indexes and foreign keys...")
+		err = restoreProductsIndexes(db, indexes)
+		if err != nil {
+			panic(fmt.Errorf("failed to restore products indexes: %w", err))
+		}
+
+		err = restoreProductsForeignKeys(db, foreignKeys)
+		if err != nil {
+			panic(fmt.Errorf("failed to restore products foreign keys: %w", err))
+		}
 
 		fmt.Println("Seeding successfully!")
 	}))
@@ -324,6 +364,202 @@ func createProductsCSV(dir string, tenantIDs, categoryIDs []uuid.UUID, count int
 		if (i+1)%10000 == 0 || i+1 == count {
 			fmt.Printf("  Progress: %d/%d products generated\n", i+1, count)
 		}
+	}
+
+	return nil
+}
+
+// IndexInfo holds information about an index
+type IndexInfo struct {
+	IndexName  string
+	ColumnName string
+	NonUnique  bool
+	SeqInIndex int64
+}
+
+// ForeignKeyInfo holds information about a foreign key
+type ForeignKeyInfo struct {
+	ConstraintName       string
+	ColumnName           string
+	ReferencedTableName  string
+	ReferencedColumnName string
+}
+
+// getProductsIndexes retrieves index information for the products table
+func getProductsIndexes(db *sql.DB) ([]IndexInfo, error) {
+	query := `
+		SELECT DISTINCT INDEX_NAME, COLUMN_NAME, NON_UNIQUE, SEQ_IN_INDEX
+		FROM information_schema.STATISTICS
+		WHERE TABLE_SCHEMA = DATABASE()
+		  AND TABLE_NAME = 'products'
+		  AND INDEX_NAME != 'PRIMARY'
+		ORDER BY INDEX_NAME, SEQ_IN_INDEX
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query indexes: %w", err)
+	}
+	defer rows.Close()
+
+	var indexes []IndexInfo
+	for rows.Next() {
+		var idx IndexInfo
+		var nonUnique int64
+		if err := rows.Scan(&idx.IndexName, &idx.ColumnName, &nonUnique, &idx.SeqInIndex); err != nil {
+			return nil, fmt.Errorf("failed to scan index row: %w", err)
+		}
+		idx.NonUnique = nonUnique == 1
+		indexes = append(indexes, idx)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating index rows: %w", err)
+	}
+
+	return indexes, nil
+}
+
+// getProductsForeignKeys retrieves foreign key information for the products table
+func getProductsForeignKeys(db *sql.DB) ([]ForeignKeyInfo, error) {
+	query := `
+		SELECT CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+		FROM information_schema.KEY_COLUMN_USAGE
+		WHERE TABLE_SCHEMA = DATABASE()
+		  AND TABLE_NAME = 'products'
+		  AND REFERENCED_TABLE_NAME IS NOT NULL
+		ORDER BY CONSTRAINT_NAME
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query foreign keys: %w", err)
+	}
+	defer rows.Close()
+
+	var fks []ForeignKeyInfo
+	for rows.Next() {
+		var fk ForeignKeyInfo
+		if err := rows.Scan(&fk.ConstraintName, &fk.ColumnName, &fk.ReferencedTableName, &fk.ReferencedColumnName); err != nil {
+			return nil, fmt.Errorf("failed to scan foreign key row: %w", err)
+		}
+		fks = append(fks, fk)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating foreign key rows: %w", err)
+	}
+
+	return fks, nil
+}
+
+// dropProductsIndexes drops indexes from the products table
+func dropProductsIndexes(db *sql.DB, indexes []IndexInfo) error {
+	// Group indexes by name to handle composite indexes
+	indexMap := make(map[string]bool)
+	for _, idx := range indexes {
+		indexMap[idx.IndexName] = true
+	}
+
+	for indexName := range indexMap {
+		query := fmt.Sprintf("ALTER TABLE products DROP INDEX `%s`", indexName)
+		_, err := db.Exec(query)
+		if err != nil {
+			return fmt.Errorf("failed to drop index %s: %w", indexName, err)
+		}
+		fmt.Printf("  Dropped index: %s\n", indexName)
+	}
+
+	return nil
+}
+
+// dropProductsForeignKeys drops foreign keys from the products table
+func dropProductsForeignKeys(db *sql.DB, fks []ForeignKeyInfo) error {
+	// Group foreign keys by constraint name
+	fkMap := make(map[string]bool)
+	for _, fk := range fks {
+		fkMap[fk.ConstraintName] = true
+	}
+
+	for constraintName := range fkMap {
+		query := fmt.Sprintf("ALTER TABLE products DROP FOREIGN KEY `%s`", constraintName)
+		_, err := db.Exec(query)
+		if err != nil {
+			return fmt.Errorf("failed to drop foreign key %s: %w", constraintName, err)
+		}
+		fmt.Printf("  Dropped foreign key: %s\n", constraintName)
+	}
+
+	return nil
+}
+
+// restoreProductsIndexes restores indexes to the products table
+func restoreProductsIndexes(db *sql.DB, indexes []IndexInfo) error {
+	// Group indexes by name to handle composite indexes
+	indexMap := make(map[string][]IndexInfo)
+	for _, idx := range indexes {
+		indexMap[idx.IndexName] = append(indexMap[idx.IndexName], idx)
+	}
+
+	for indexName, idxList := range indexMap {
+		// Sort by SEQ_IN_INDEX to maintain column order
+		// (already sorted by query ORDER BY clause)
+
+		// Build column list
+		var columns []string
+		for _, idx := range idxList {
+			columns = append(columns, fmt.Sprintf("`%s`", idx.ColumnName))
+		}
+
+		// Determine if UNIQUE or not
+		unique := ""
+		if !idxList[0].NonUnique {
+			unique = "UNIQUE "
+		}
+
+		query := fmt.Sprintf("ALTER TABLE products ADD %sINDEX `%s` (%s)", unique, indexName, strings.Join(columns, ", "))
+		_, err := db.Exec(query)
+		if err != nil {
+			return fmt.Errorf("failed to restore index %s: %w", indexName, err)
+		}
+		fmt.Printf("  Restored index: %s\n", indexName)
+	}
+
+	return nil
+}
+
+// restoreProductsForeignKeys restores foreign keys to the products table
+func restoreProductsForeignKeys(db *sql.DB, fks []ForeignKeyInfo) error {
+	// Group foreign keys by constraint name to handle composite foreign keys
+	fkMap := make(map[string][]ForeignKeyInfo)
+	for _, fk := range fks {
+		fkMap[fk.ConstraintName] = append(fkMap[fk.ConstraintName], fk)
+	}
+
+	for constraintName, fkList := range fkMap {
+		// Build column list and referenced column list
+		var columns []string
+		var refColumns []string
+		for _, fk := range fkList {
+			columns = append(columns, fmt.Sprintf("`%s`", fk.ColumnName))
+			refColumns = append(refColumns, fmt.Sprintf("`%s`", fk.ReferencedColumnName))
+		}
+
+		// All FKs in the list should have the same referenced table
+		refTable := fkList[0].ReferencedTableName
+
+		query := fmt.Sprintf(
+			"ALTER TABLE products ADD CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)",
+			constraintName,
+			strings.Join(columns, ", "),
+			refTable,
+			strings.Join(refColumns, ", "),
+		)
+		_, err := db.Exec(query)
+		if err != nil {
+			return fmt.Errorf("failed to restore foreign key %s: %w", constraintName, err)
+		}
+		fmt.Printf("  Restored foreign key: %s\n", constraintName)
 	}
 
 	return nil
