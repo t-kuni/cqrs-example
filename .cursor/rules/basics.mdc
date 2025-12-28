@@ -20,6 +20,8 @@ alwaysApply: true
     * テストコードを実行します
 * `git add -A && GIT_PAGER=cat git diff HEAD`
     * 現在の変更状態を確認する
+* `GIT_PAGER=cat git diff HEAD^ HEAD`
+    * 直前のコミットの差分確認
 
 # フォルダ構成
 
