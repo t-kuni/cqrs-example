@@ -20,4 +20,4 @@
 coverage/*
 !coverage/.gitingore
 
-.sisho
+/main

@@ -45,7 +45,7 @@ make generate
 
 ```bash
 go run commands/migrate/main.go --reset
-go run commands/seed/main.go
+go run commands/seed-v2/main.go
 ```
 
 3-4. 疎通確認

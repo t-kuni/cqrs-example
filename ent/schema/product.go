@@ -22,6 +22,7 @@ func (Product) Fields() []ent.Field {
 		field.String("name"),
 		field.Int64("price"),
 		field.JSON("properties", &model.ProductProperties{}),
+		field.Time("listed_at"),
 	}
 }
 
