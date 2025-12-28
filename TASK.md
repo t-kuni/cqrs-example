@@ -1,53 +1,77 @@
 # タスク一覧
 
-## フェーズ1: seed-v2プログラムの修正 ✅
+## 概要
 
-### 仕様書
+`commands/seed-v2/main.go` のサンプルデータ投入処理を BulkInsert 方式から CSV + LOAD DATA LOCAL INFILE 方式に変更する。
 
-`spec/データモデル.md` の「サンプルデータ」セクションを参照
+仕様書：`spec/データモデル.md`
 
-### 実装タスク
+## タスク
 
-- [x] `commands/seed-v2/main.go` の修正
-  - データ投入前に以下のSQL設定を追加する
-    - `SET FOREIGN_KEY_CHECKS=0` を実行（外部キー制約を一時的に無効化）
-    - `SET AUTOCOMMIT=0` を実行（自動コミットを無効化）
-    - `SET sql_log_bin=0` を実行（バイナリログを無効化）
-  - 各テーブルをTRUNCATEする処理を追加
-    - 対象テーブル: `users`, `tenants`, `categories`, `products`
-    - TRUNCATEは外部キー制約無効化の後、データ投入の前に実行する
-  - 処理終了時に `SET FOREIGN_KEY_CHECKS=1` を実行して外部キー制約を再有効化
-  - 参考実装: `commands/seed/main.go` の46-57行目に類似の実装がある
-  - 実装方法:
-    - `conn.GetDB()` で `*sql.DB` を取得
-    - `db.Exec()` メソッドでSQL文を実行
-    - エラーハンドリングを適切に行う
-    - defer文を使って確実に `FOREIGN_KEY_CHECKS=1` に戻す
+### MySQL設定の変更
+
+- [ ] `local-env/db/mysql.cnf` に LOAD DATA LOCAL INFILE を有効化する設定を追加
+  - `[mysqld]` セクションに `local_infile=1` を追加
+  - LOAD DATA LOCAL INFILE を使用するために必要な設定
+
+### DB接続設定の変更
+
+- [ ] infrastructure層のDB接続部分で LOAD DATA LOCAL INFILE を有効化
+  - DB接続のDSN（Data Source Name）に `allowAllFiles=true` パラメータを追加
+  - 該当ファイル：infrastructure層のDB接続を初期化しているファイル
+  - 補足：既存のDSN設定を確認し、パラメータに追加する
+
+### seed-v2プログラムの修正
+
+- [ ] `commands/seed-v2/main.go` を修正
+  - 変更概要：
+    - BulkInsert（CreateBulk）を使用したデータ投入をやめる
+    - 代わりに、CSV ファイルを生成してから LOAD DATA LOCAL INFILE でデータを投入する方式に変更
+  - 処理フロー：
+    1. 各テーブルをTRUNCATE（既存の処理を維持）
+    2. SET FOREIGN_KEY_CHECKS=0（既存の処理を維持）
+    3. SET AUTOCOMMIT=0（既存の処理を維持）
+    4. SET sql_log_bin=0（既存の処理を維持）
+    5. 各テーブル用のCSVファイルを生成
+       - users.csv：200レコード、カラム：id（UUID）、name
+       - tenants.csv：1000レコード、カラム：id（UUID）、owner_id（UUID）、name
+       - categories.csv：50レコード、カラム：id（UUID）、name
+       - products.csv：100万レコード、カラム：id（UUID）、tenant_id（UUID）、category_id（UUID）、name、price、properties（JSON文字列）、listed_at（datetime形式）
+       - CSV出力先：`/tmp/` ディレクトリ
+       - CSVフォーマット：カンマ区切り、ヘッダーなし、文字列はダブルクォートで囲む
+       - JSONのpropertiesフィールドは文字列としてエスケープして出力
+       - UUIDはgoogle/uuidパッケージで生成
+    6. LOAD DATA LOCAL INFILE を実行してCSVファイルからデータを投入
+       - 各テーブルごとに実行
+       - SQL例：`LOAD DATA LOCAL INFILE '/tmp/users.csv' INTO TABLE users FIELDS TERMINATED BY ',' ENCLOSED BY '"' LINES TERMINATED BY '\n' (id, name);`
+       - products テーブルについては properties カラムが JSON 型なので適切にマッピング
+    7. COMMIT を実行
+    8. 完了メッセージを表示
+  - データ生成ロジック：
+    - 既存の仕様書通り（spec/データモデル.md参照）
+    - users：200レコード、name は `ユーザX`（X は 1 からの連番）
+    - tenants：1000レコード、name は `テナントX`、userを満遍なく紐付ける
+    - categories：50レコード、name は `カテゴリX`
+    - products：100万レコード、name は `商品X`、price は 100〜10000 の乱数、properties は spec/models/products_properties.yaml の仕様通り、listed_at は過去1年以内のランダムな日時
+  - 注意点：
+    - CSV生成時に大量のメモリを消費しないよう、バッファリングを活用すること
+    - 特に products.csv（100万レコード）は逐次書き込みを行うこと
 
 ### ビルド確認
 
-- [x] `make generate` を実行してビルドエラーがないことを確認
+- [ ] `make generate` を実行してビルドエラーがないことを確認
 
-### 完了報告
+## 対象外のタスク
 
-フェーズ1のすべてのタスクが完了しました。
+以下のタスクは不要です：
 
-#### 実装内容
+- **動作確認**: 実際にseed-v2を実行してのデータ投入確認は不要
+- **テスト実行**: `make test` の実行は不要
 
-`commands/seed-v2/main.go` に以下の処理を追加しました：
+## 指示者宛ての懸念事項（作業対象外）
 
-1. `conn.GetDB()` で `*sql.DB` を取得
-2. データ投入前に以下のSQL設定を実行：
-   - `SET FOREIGN_KEY_CHECKS=0`（defer で確実に戻すように実装）
-   - `SET AUTOCOMMIT=0`
-   - `SET sql_log_bin=0`
-3. 各テーブル（users, tenants, categories, products）に対してTRUNCATE TABLEを実行
-4. 適切なエラーハンドリングを実装
-5. ビルドエラーがないことを確認済み（`make generate` 実行完了）
-
-## 備考
-
-- `commands/seed-v2/main.go` は現在 `conn.GetEnt()` のみを使用しているが、今回の修正で `conn.GetDB()` も使用することになる
-- `SET AUTOCOMMIT=0` と `SET sql_log_bin=0` の設定は、大量データ投入時のパフォーマンス向上のために追加される
-- 既存の `commands/seed/main.go` には `SET FOREIGN_KEY_CHECKS` と `TRUNCATE TABLE` の実装があるため、これを参考にすること
+- LOAD DATA LOCAL INFILE はセキュリティリスクがあるため、本番環境では使用しないことを推奨
+- 本機能は開発環境専用のサンプルデータ投入ツールという位置づけであることを確認
+- MySQLのバージョンによっては LOAD DATA LOCAL INFILE の動作が異なる可能性がある（MySQL 8.0以降は制限が厳しくなっている）
+- Docker環境でのファイルパスの扱いに注意が必要（コンテナ内のパスとホストのパスの違い）
 
