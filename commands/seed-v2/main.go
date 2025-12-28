@@ -22,11 +22,39 @@ func main() {
 	ctx := context.Background()
 	app := di.NewApp(fx.Invoke(func(conn db.IConnector) {
 		client := conn.GetEnt()
+		db := conn.GetDB()
 
 		// 乱数生成器の初期化
 		rand.Seed(time.Now().UnixNano())
 
 		fmt.Println("Starting seed-v2...")
+
+		// データ投入前のSQL設定
+		_, err := db.Exec("SET FOREIGN_KEY_CHECKS=0")
+		if err != nil {
+			panic(err)
+		}
+		defer db.Exec("SET FOREIGN_KEY_CHECKS=1")
+
+		_, err = db.Exec("SET AUTOCOMMIT=0")
+		if err != nil {
+			panic(err)
+		}
+
+		_, err = db.Exec("SET sql_log_bin=0")
+		if err != nil {
+			panic(err)
+		}
+
+		// 各テーブルをTRUNCATEする
+		tables := []string{"users", "tenants", "categories", "products"}
+		for _, table := range tables {
+			_, err := db.Exec("TRUNCATE TABLE " + table)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("Truncated table: %s\n", table)
+		}
 
 		// 1. Usersの作成
 		fmt.Println("Creating users...")

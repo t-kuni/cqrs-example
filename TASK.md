@@ -1,6 +1,6 @@
 # タスク一覧
 
-## フェーズ1: seed-v2プログラムの修正
+## フェーズ1: seed-v2プログラムの修正 ✅
 
 ### 仕様書
 
@@ -8,7 +8,7 @@
 
 ### 実装タスク
 
-- [ ] `commands/seed-v2/main.go` の修正
+- [x] `commands/seed-v2/main.go` の修正
   - データ投入前に以下のSQL設定を追加する
     - `SET FOREIGN_KEY_CHECKS=0` を実行（外部キー制約を一時的に無効化）
     - `SET AUTOCOMMIT=0` を実行（自動コミットを無効化）
@@ -26,7 +26,24 @@
 
 ### ビルド確認
 
-- [ ] `make generate` を実行してビルドエラーがないことを確認
+- [x] `make generate` を実行してビルドエラーがないことを確認
+
+### 完了報告
+
+フェーズ1のすべてのタスクが完了しました。
+
+#### 実装内容
+
+`commands/seed-v2/main.go` に以下の処理を追加しました：
+
+1. `conn.GetDB()` で `*sql.DB` を取得
+2. データ投入前に以下のSQL設定を実行：
+   - `SET FOREIGN_KEY_CHECKS=0`（defer で確実に戻すように実装）
+   - `SET AUTOCOMMIT=0`
+   - `SET sql_log_bin=0`
+3. 各テーブル（users, tenants, categories, products）に対してTRUNCATE TABLEを実行
+4. 適切なエラーハンドリングを実装
+5. ビルドエラーがないことを確認済み（`make generate` 実行完了）
 
 ## 備考
 
