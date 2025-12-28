@@ -5,5 +5,11 @@ collation-server=utf8mb4_bin
 general_log_file = /tmp/query.log
 general_log      = 1
 
+# LOAD DATA LOCAL INFILE を使用するのに必要
+local_infile=1
+
 [client]
 default-character-set = utf8mb4
+
+# LOAD DATA LOCAL INFILE を使用するのに必要
+local-infile=1

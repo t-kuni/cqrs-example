@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -12,7 +15,6 @@ import (
 	"github.com/t-kuni/cqrs-example/di"
 	"github.com/t-kuni/cqrs-example/domain/infrastructure/db"
 	"github.com/t-kuni/cqrs-example/domain/model"
-	"github.com/t-kuni/cqrs-example/ent"
 	"go.uber.org/fx"
 )
 
@@ -21,7 +23,6 @@ func main() {
 
 	ctx := context.Background()
 	app := di.NewApp(fx.Invoke(func(conn db.IConnector) {
-		client := conn.GetEnt()
 		db := conn.GetDB()
 
 		// 乱数生成器の初期化
@@ -47,7 +48,7 @@ func main() {
 		}
 
 		// 各テーブルをTRUNCATEする
-		tables := []string{"users", "tenants", "categories", "products"}
+		tables := []string{"products", "categories", "tenants", "users"}
 		for _, table := range tables {
 			_, err := db.Exec("TRUNCATE TABLE " + table)
 			if err != nil {
@@ -56,27 +57,82 @@ func main() {
 			fmt.Printf("Truncated table: %s\n", table)
 		}
 
-		// 1. Usersの作成
-		fmt.Println("Creating users...")
-		userIDs := createUsers(ctx, client, 200)
-		fmt.Printf("Created %d users\n", len(userIDs))
+		// CSV ファイルの出力先ディレクトリ
+		tmpDir := "/tmp"
 
-		// 2. Tenantsの作成
-		fmt.Println("Creating tenants...")
-		tenantIDs := createTenants(ctx, client, userIDs, 1000)
-		fmt.Printf("Created %d tenants\n", len(tenantIDs))
+		// 1. Users用のCSVを生成
+		fmt.Println("Creating users CSV...")
+		userIDs, err := createUsersCSV(tmpDir, 200)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Created users.csv with %d records\n", len(userIDs))
 
-		// 3. Categoriesの作成
-		fmt.Println("Creating categories...")
-		categoryIDs := createCategories(ctx, client, 50)
-		fmt.Printf("Created %d categories\n", len(categoryIDs))
+		// 2. Tenants用のCSVを生成
+		fmt.Println("Creating tenants CSV...")
+		tenantIDs, err := createTenantsCSV(tmpDir, userIDs, 1000)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Created tenants.csv with %d records\n", len(tenantIDs))
 
-		// 4. Productsの作成（バッチ処理）
-		fmt.Println("Creating products...")
-		totalProducts := int32(1000000)
-		batchSize := int32(1000)
-		createProducts(ctx, client, tenantIDs, categoryIDs, totalProducts, batchSize)
-		fmt.Printf("Created %d products\n", totalProducts)
+		// 3. Categories用のCSVを生成
+		fmt.Println("Creating categories CSV...")
+		categoryIDs, err := createCategoriesCSV(tmpDir, 50)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Created categories.csv with %d records\n", len(categoryIDs))
+
+		// 4. Products用のCSVを生成
+		fmt.Println("Creating products CSV...")
+		productsCount := int32(1000000)
+		err = createProductsCSV(tmpDir, tenantIDs, categoryIDs, productsCount)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Created products.csv with %d records\n", productsCount)
+
+		// 5. LOAD DATA LOCAL INFILE を実行してデータを投入
+		fmt.Println("Loading data from CSV files...")
+
+		// Users
+		usersCSVPath := filepath.Join(tmpDir, "users.csv")
+		_, err = db.Exec(fmt.Sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE users FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' (id, name)", usersCSVPath))
+		if err != nil {
+			panic(fmt.Errorf("failed to load users.csv: %w", err))
+		}
+		fmt.Println("  Loaded users")
+
+		// Tenants
+		tenantsCSVPath := filepath.Join(tmpDir, "tenants.csv")
+		_, err = db.Exec(fmt.Sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE tenants FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' (id, owner_id, name)", tenantsCSVPath))
+		if err != nil {
+			panic(fmt.Errorf("failed to load tenants.csv: %w", err))
+		}
+		fmt.Println("  Loaded tenants")
+
+		// Categories
+		categoriesCSVPath := filepath.Join(tmpDir, "categories.csv")
+		_, err = db.Exec(fmt.Sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE categories FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' (id, name)", categoriesCSVPath))
+		if err != nil {
+			panic(fmt.Errorf("failed to load categories.csv: %w", err))
+		}
+		fmt.Println("  Loaded categories")
+
+		// Products
+		productsCSVPath := filepath.Join(tmpDir, "products.csv")
+		_, err = db.Exec(fmt.Sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE products FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' (id, tenant_id, category_id, name, price, properties, listed_at)", productsCSVPath))
+		if err != nil {
+			panic(fmt.Errorf("failed to load products.csv: %w", err))
+		}
+		fmt.Println("  Loaded products")
+
+		// 6. COMMIT を実行
+		_, err = db.Exec("COMMIT")
+		if err != nil {
+			panic(err)
+		}
 
 		fmt.Println("Seeding successfully!")
 	}))
@@ -88,76 +144,107 @@ func main() {
 	}
 }
 
-// createUsers creates user records and returns their IDs
-func createUsers(ctx context.Context, client *ent.Client, count int32) []uuid.UUID {
-	builders := make([]*ent.UserCreate, count)
-	for i := int32(0); i < count; i++ {
-		name := fmt.Sprintf("ユーザ%d", i+1)
-		builders[i] = client.User.Create().SetName(name)
-	}
-
-	users, err := client.User.CreateBulk(builders...).Save(ctx)
+// createUsersCSV creates users.csv and returns user IDs
+func createUsersCSV(dir string, count int32) ([]uuid.UUID, error) {
+	filePath := filepath.Join(dir, "users.csv")
+	file, err := os.Create(filePath)
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	ids := make([]uuid.UUID, count)
+	for i := int32(0); i < count; i++ {
+		id := uuid.New()
+		ids[i] = id
+		name := fmt.Sprintf("ユーザ%d", i+1)
+
+		record := []string{id.String(), name}
+		if err := writer.Write(record); err != nil {
+			return nil, err
+		}
 	}
 
-	ids := make([]uuid.UUID, len(users))
-	for i, user := range users {
-		ids[i] = user.ID
-	}
-	return ids
+	return ids, nil
 }
 
-// createTenants creates tenant records and returns their IDs
-func createTenants(ctx context.Context, client *ent.Client, userIDs []uuid.UUID, count int32) []uuid.UUID {
-	builders := make([]*ent.TenantCreate, count)
+// createTenantsCSV creates tenants.csv and returns tenant IDs
+func createTenantsCSV(dir string, userIDs []uuid.UUID, count int32) ([]uuid.UUID, error) {
+	filePath := filepath.Join(dir, "tenants.csv")
+	file, err := os.Create(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	ids := make([]uuid.UUID, count)
 	usersPerTenant := int32(5) // 1000 tenants / 200 users = 5 tenants per user
 
 	for i := int32(0); i < count; i++ {
+		id := uuid.New()
+		ids[i] = id
 		name := fmt.Sprintf("テナント%d", i+1)
+
 		userIndex := i / usersPerTenant
 		if int32(userIndex) >= int32(len(userIDs)) {
 			userIndex = int32(len(userIDs)) - 1
 		}
-		builders[i] = client.Tenant.Create().
-			SetName(name).
-			SetOwnerID(userIDs[userIndex])
+		ownerID := userIDs[userIndex]
+
+		record := []string{id.String(), ownerID.String(), name}
+		if err := writer.Write(record); err != nil {
+			return nil, err
+		}
 	}
 
-	tenants, err := client.Tenant.CreateBulk(builders...).Save(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	ids := make([]uuid.UUID, len(tenants))
-	for i, tenant := range tenants {
-		ids[i] = tenant.ID
-	}
-	return ids
+	return ids, nil
 }
 
-// createCategories creates category records and returns their IDs
-func createCategories(ctx context.Context, client *ent.Client, count int32) []uuid.UUID {
-	builders := make([]*ent.CategoryCreate, count)
+// createCategoriesCSV creates categories.csv and returns category IDs
+func createCategoriesCSV(dir string, count int32) ([]uuid.UUID, error) {
+	filePath := filepath.Join(dir, "categories.csv")
+	file, err := os.Create(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	ids := make([]uuid.UUID, count)
 	for i := int32(0); i < count; i++ {
+		id := uuid.New()
+		ids[i] = id
 		name := fmt.Sprintf("カテゴリ%d", i+1)
-		builders[i] = client.Category.Create().SetName(name)
+
+		record := []string{id.String(), name}
+		if err := writer.Write(record); err != nil {
+			return nil, err
+		}
 	}
 
-	categories, err := client.Category.CreateBulk(builders...).Save(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	ids := make([]uuid.UUID, len(categories))
-	for i, category := range categories {
-		ids[i] = category.ID
-	}
-	return ids
+	return ids, nil
 }
 
-// createProducts creates product records in batches
-func createProducts(ctx context.Context, client *ent.Client, tenantIDs, categoryIDs []uuid.UUID, totalCount, batchSize int32) {
+// createProductsCSV creates products.csv
+func createProductsCSV(dir string, tenantIDs, categoryIDs []uuid.UUID, count int32) error {
+	filePath := filepath.Join(dir, "products.csv")
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
 	numTenants := int32(len(tenantIDs))
 	numCategories := int32(len(categoryIDs))
 	now := time.Now()
@@ -167,55 +254,56 @@ func createProducts(ctx context.Context, client *ent.Client, tenantIDs, category
 	sizes := []string{"S", "M", "L"}
 	colors := []string{"red", "green", "blue"}
 
-	for i := int32(0); i < totalCount; i += batchSize {
-		currentBatchSize := batchSize
-		if i+batchSize > totalCount {
-			currentBatchSize = totalCount - i
+	for i := int32(0); i < count; i++ {
+		id := uuid.New()
+		name := fmt.Sprintf("商品%d", i+1)
+		price := int64(rand.Intn(9901) + 100) // 100-10000
+
+		// Properties
+		size := sizes[rand.Intn(len(sizes))]
+		latitude := fmt.Sprintf("%.6f", 20.43+rand.Float64()*(45.55-20.43))
+		longitude := fmt.Sprintf("%.6f", 122.93+rand.Float64()*(153.99-122.93))
+		color := colors[rand.Intn(len(colors))]
+		properties := &model.ProductProperties{
+			Size:      &size,
+			Latitude:  &latitude,
+			Longitude: &longitude,
+			Color:     &color,
 		}
 
-		builders := make([]*ent.ProductCreate, currentBatchSize)
-		for j := int32(0); j < currentBatchSize; j++ {
-			idx := i + j
-			name := fmt.Sprintf("商品%d", idx+1)
-			price := int64(rand.Intn(9901) + 100) // 100-10000
-
-			// Properties
-			size := sizes[rand.Intn(len(sizes))]
-			latitude := fmt.Sprintf("%.6f", 20.43+rand.Float64()*(45.55-20.43))
-			longitude := fmt.Sprintf("%.6f", 122.93+rand.Float64()*(153.99-122.93))
-			color := colors[rand.Intn(len(colors))]
-			properties := &model.ProductProperties{
-				Size:      &size,
-				Latitude:  &latitude,
-				Longitude: &longitude,
-				Color:     &color,
-			}
-
-			// listed_at: random time within the past year
-			randomSeconds := rand.Int63n(yearInSeconds)
-			listedAt := oneYearAgo.Add(time.Duration(randomSeconds) * time.Second)
-
-			// Distribute products evenly across tenants and categories
-			tenantID := tenantIDs[idx%numTenants]
-			categoryID := categoryIDs[idx%numCategories]
-
-			builders[j] = client.Product.Create().
-				SetName(name).
-				SetPrice(price).
-				SetProperties(properties).
-				SetListedAt(listedAt).
-				SetTenantID(tenantID).
-				SetCategoryID(categoryID)
-		}
-
-		_, err := client.Product.CreateBulk(builders...).Save(ctx)
+		// JSON化
+		propertiesJSON, err := json.Marshal(properties)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
-		if (i+currentBatchSize)%10000 == 0 || i+currentBatchSize == totalCount {
-			fmt.Printf("  Progress: %d/%d products created\n", i+currentBatchSize, totalCount)
+		// listed_at: random time within the past year
+		randomSeconds := rand.Int63n(yearInSeconds)
+		listedAt := oneYearAgo.Add(time.Duration(randomSeconds) * time.Second)
+		listedAtStr := listedAt.Format("2006-01-02 15:04:05")
+
+		// Distribute products evenly across tenants and categories
+		tenantID := tenantIDs[i%numTenants]
+		categoryID := categoryIDs[i%numCategories]
+
+		record := []string{
+			id.String(),
+			tenantID.String(),
+			categoryID.String(),
+			name,
+			fmt.Sprintf("%d", price),
+			string(propertiesJSON),
+			listedAtStr,
+		}
+		if err := writer.Write(record); err != nil {
+			return err
+		}
+
+		// Progress display
+		if (i+1)%10000 == 0 || i+1 == count {
+			fmt.Printf("  Progress: %d/%d products generated\n", i+1, count)
 		}
 	}
-}
 
+	return nil
+}

@@ -42,6 +42,6 @@ func RegisterTxdbDriver() {
 	port := os.Getenv("DB_PORT")
 	database := os.Getenv("DB_DATABASE")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, password, host, port, database)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&allowAllFiles=true", user, password, host, port, database)
 	txdb.Register("txdb", "mysql", dsn)
 }
