@@ -37,11 +37,6 @@ func main() {
 		}
 		defer db.Exec("SET FOREIGN_KEY_CHECKS=1")
 
-		_, err = db.Exec("SET AUTOCOMMIT=0")
-		if err != nil {
-			panic(err)
-		}
-
 		_, err = db.Exec("SET sql_log_bin=0")
 		if err != nil {
 			panic(err)
@@ -97,42 +92,68 @@ func main() {
 		fmt.Println("Loading data from CSV files...")
 
 		// Users
+		_, err = db.Exec("BEGIN")
+		if err != nil {
+			panic(err)
+		}
 		usersCSVPath := filepath.Join(tmpDir, "users.csv")
 		_, err = db.Exec(fmt.Sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE users FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' (id, name)", usersCSVPath))
 		if err != nil {
 			panic(fmt.Errorf("failed to load users.csv: %w", err))
 		}
+		_, err = db.Exec("COMMIT")
+		if err != nil {
+			panic(err)
+		}
 		fmt.Println("  Loaded users")
 
 		// Tenants
+		_, err = db.Exec("BEGIN")
+		if err != nil {
+			panic(err)
+		}
 		tenantsCSVPath := filepath.Join(tmpDir, "tenants.csv")
 		_, err = db.Exec(fmt.Sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE tenants FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' (id, owner_id, name)", tenantsCSVPath))
 		if err != nil {
 			panic(fmt.Errorf("failed to load tenants.csv: %w", err))
 		}
+		_, err = db.Exec("COMMIT")
+		if err != nil {
+			panic(err)
+		}
 		fmt.Println("  Loaded tenants")
 
 		// Categories
+		_, err = db.Exec("BEGIN")
+		if err != nil {
+			panic(err)
+		}
 		categoriesCSVPath := filepath.Join(tmpDir, "categories.csv")
 		_, err = db.Exec(fmt.Sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE categories FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' (id, name)", categoriesCSVPath))
 		if err != nil {
 			panic(fmt.Errorf("failed to load categories.csv: %w", err))
 		}
+		_, err = db.Exec("COMMIT")
+		if err != nil {
+			panic(err)
+		}
 		fmt.Println("  Loaded categories")
 
 		// Products
+		_, err = db.Exec("BEGIN")
+		if err != nil {
+			panic(err)
+		}
 		productsCSVPath := filepath.Join(tmpDir, "products.csv")
 		_, err = db.Exec(fmt.Sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE products FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' (id, tenant_id, category_id, name, price, properties, listed_at)", productsCSVPath))
 		if err != nil {
 			panic(fmt.Errorf("failed to load products.csv: %w", err))
 		}
-		fmt.Println("  Loaded products")
-
-		// 6. COMMIT を実行
 		_, err = db.Exec("COMMIT")
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("  Loaded products")
 
 		fmt.Println("Seeding successfully!")
 	}))
