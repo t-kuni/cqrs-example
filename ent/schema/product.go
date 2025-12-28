@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/t-kuni/cqrs-example/domain/model"
 )
 
@@ -15,9 +16,9 @@ type Product struct {
 // Fields of the Product.
 func (Product) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("id"),
-		field.String("tenant_id"),
-		field.String("category_id"),
+		field.UUID("id", uuid.UUID{}).Default(uuid.New),
+		field.UUID("tenant_id", uuid.UUID{}),
+		field.UUID("category_id", uuid.UUID{}),
 		field.String("name"),
 		field.Int64("price"),
 		field.JSON("properties", &model.ProductProperties{}),

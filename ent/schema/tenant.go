@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // Tenant holds the schema definition for the Tenant entity.
@@ -14,8 +15,8 @@ type Tenant struct {
 // Fields of the Tenant.
 func (Tenant) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("id"),
-		field.String("owner_id"),
+		field.UUID("id", uuid.UUID{}).Default(uuid.New),
+		field.UUID("owner_id", uuid.UUID{}),
 		field.String("name"),
 	}
 }
