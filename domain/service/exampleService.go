@@ -5,7 +5,6 @@ import (
 	"context"
 	"github.com/t-kuni/go-web-api-template/domain/infrastructure/api"
 	"github.com/t-kuni/go-web-api-template/domain/infrastructure/db"
-	"github.com/t-kuni/go-web-api-template/ent"
 )
 
 type ExampleService struct {
@@ -14,7 +13,7 @@ type ExampleService struct {
 }
 
 type IExampleService interface {
-	Exec(ctx context.Context, baseAsset string) (string, []*ent.Company, error)
+	Exec(ctx context.Context, baseAsset string) (string, error)
 }
 
 func NewExampleService(conn db.IConnector, binanceApi api.IBinanceApi) (IExampleService, error) {
@@ -24,18 +23,6 @@ func NewExampleService(conn db.IConnector, binanceApi api.IBinanceApi) (IExample
 	}, nil
 }
 
-func (s ExampleService) Exec(ctx context.Context, baseAsset string) (string, []*ent.Company, error) {
-	info, err := s.BinanceApi.GetExchangeInfo(baseAsset)
-	if err != nil {
-		return "", nil, err
-	}
-
-	companies, err := s.DBConnector.GetEnt().Company.Query().
-		WithUsers().
-		All(ctx)
-	if err != nil {
-		return "", nil, err
-	}
-
-	return info.Symbols[0].Status, companies, nil
+func (s ExampleService) Exec(ctx context.Context, baseAsset string) (string, error) {
+	return "", nil
 }

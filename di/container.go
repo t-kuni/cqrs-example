@@ -1,7 +1,6 @@
 package di
 
 import (
-	"github.com/t-kuni/go-web-api-template/application/handler"
 	"github.com/t-kuni/go-web-api-template/domain/service"
 	customErrors "github.com/t-kuni/go-web-api-template/errors"
 	"github.com/t-kuni/go-web-api-template/infrastructure/api"
@@ -27,11 +26,7 @@ func NewApp(opts ...fx.Option) *fx.App {
 			middleware.NewAccessLog,
 
 			// Handler
-			handler.NewGetUsers,
-			handler.NewPostUser,
-			handler.NewListTodos,
-			handler.NewGetCompanies,
-			handler.NewGetCompaniesUsers,
+			// handler.NewGetUsers,
 
 			// Service
 			service.NewExampleService,
