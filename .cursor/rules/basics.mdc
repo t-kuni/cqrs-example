@@ -12,16 +12,18 @@ alwaysApply: true
 
 # コマンド
 
-* `make generate`
-  * ent/schema内の*.goに基づいて、entフォルダ配下にコードを生成します。
-  * swagger.ymlに基づいてrestapiフォルダ配下にコードを生成します
-  * モックファイルの作成
-* `make test`
-    * テストコードを実行します
-* `git add -A && GIT_PAGER=cat git diff HEAD`
-    * 現在の変更状態を確認する
-* `GIT_PAGER=cat git diff HEAD^ HEAD`
-    * 直前のコミットの差分確認
+```bash
+# 差分確認
+git add -A && GIT_PAGER=cat git diff HEAD
+# 直前のコミットの差分確認
+GIT_PAGER=cat git diff HEAD^ HEAD
+# ent/schema内の*.goに基づいて、entフォルダ配下にコードを生成します。
+# swagger.ymlに基づいてrestapiフォルダ配下にコードを生成します
+# モックファイルの作成
+make generate
+# テストコードを実行します
+make test
+```
 
 # フォルダ構成
 
@@ -55,3 +57,7 @@ alwaysApply: true
   * APIのハンドラーとswagger.ymlに基づいて生成されたコードをマッピングします。
 * swagger.yml
   * OpenAPI定義です。この定義に従ってAPIを実装してください。
+* `spec`
+  * 仕様書が格納されています
+* `research`
+  * リサーチレポートが格納されています
