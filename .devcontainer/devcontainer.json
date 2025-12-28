@@ -1,5 +1,5 @@
 {
-  "name": "Go Web Api Template",
+  "name": "CQRS example",
   "dockerComposeFile": "../docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/app",

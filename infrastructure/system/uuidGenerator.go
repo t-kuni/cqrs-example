@@ -3,7 +3,7 @@ package system
 import (
 	"github.com/google/uuid"
 	"github.com/rotisserie/eris"
-	"github.com/t-kuni/go-web-api-template/domain/infrastructure/system"
+	"github.com/t-kuni/cqrs-example/domain/infrastructure/system"
 )
 
 type UuidGenerator struct {

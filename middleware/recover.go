@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/t-kuni/go-web-api-template/domain/infrastructure/system"
+	"github.com/t-kuni/cqrs-example/domain/infrastructure/system"
 	"net/http"
 	"runtime"
 )

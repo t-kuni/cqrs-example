@@ -3,8 +3,8 @@ package service
 
 import (
 	"context"
-	"github.com/t-kuni/go-web-api-template/domain/infrastructure/api"
-	"github.com/t-kuni/go-web-api-template/domain/infrastructure/db"
+	"github.com/t-kuni/cqrs-example/domain/infrastructure/api"
+	"github.com/t-kuni/cqrs-example/domain/infrastructure/db"
 )
 
 type ExampleService struct {

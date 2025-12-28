@@ -8,8 +8,8 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/rotisserie/eris"
-	"github.com/t-kuni/go-web-api-template/domain/infrastructure/db"
-	"github.com/t-kuni/go-web-api-template/ent"
+	"github.com/t-kuni/cqrs-example/domain/infrastructure/db"
+	"github.com/t-kuni/cqrs-example/ent"
 	"go.uber.org/fx"
 	"os"
 )

@@ -1,7 +1,7 @@
 package handler_test
 
 import (
-	"github.com/t-kuni/go-web-api-template/testUtil"
+	"github.com/t-kuni/cqrs-example/testUtil"
 	"testing"
 )
 

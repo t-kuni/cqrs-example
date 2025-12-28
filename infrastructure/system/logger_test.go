@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/rotisserie/eris"
 	"github.com/stretchr/testify/assert"
-	"github.com/t-kuni/go-web-api-template/infrastructure/system"
+	"github.com/t-kuni/cqrs-example/infrastructure/system"
 	"net/http"
 	"net/http/httptest"
 	"os"

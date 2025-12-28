@@ -6,7 +6,7 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
-	systemInterface "github.com/t-kuni/go-web-api-template/domain/infrastructure/system"
+	systemInterface "github.com/t-kuni/cqrs-example/domain/infrastructure/system"
 	"io"
 	"net"
 	"net/http"

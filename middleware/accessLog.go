@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/go-http-utils/headers"
 	"github.com/labstack/echo/v4"
-	"github.com/t-kuni/go-web-api-template/domain/infrastructure/system"
+	"github.com/t-kuni/cqrs-example/domain/infrastructure/system"
 	"io/ioutil"
 	"net/http"
 	"time"

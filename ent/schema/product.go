@@ -4,7 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/t-kuni/go-web-api-template/domain/model"
+	"github.com/t-kuni/cqrs-example/domain/model"
 )
 
 // Product holds the schema definition for the Product entity.

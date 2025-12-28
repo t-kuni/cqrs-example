@@ -1,13 +1,13 @@
 package di
 
 import (
-	"github.com/t-kuni/go-web-api-template/domain/service"
-	customErrors "github.com/t-kuni/go-web-api-template/errors"
-	"github.com/t-kuni/go-web-api-template/infrastructure/api"
-	"github.com/t-kuni/go-web-api-template/infrastructure/db"
-	"github.com/t-kuni/go-web-api-template/infrastructure/system"
-	"github.com/t-kuni/go-web-api-template/middleware"
-	"github.com/t-kuni/go-web-api-template/validator"
+	"github.com/t-kuni/cqrs-example/domain/service"
+	customErrors "github.com/t-kuni/cqrs-example/errors"
+	"github.com/t-kuni/cqrs-example/infrastructure/api"
+	"github.com/t-kuni/cqrs-example/infrastructure/db"
+	"github.com/t-kuni/cqrs-example/infrastructure/system"
+	"github.com/t-kuni/cqrs-example/middleware"
+	"github.com/t-kuni/cqrs-example/validator"
 	"go.uber.org/fx"
 )
 

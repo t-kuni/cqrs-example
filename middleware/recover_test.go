@@ -4,7 +4,7 @@ package middleware_test
 
 import (
 	"encoding/json"
-	"github.com/t-kuni/go-web-api-template/middleware"
+	"github.com/t-kuni/cqrs-example/middleware"
 	"net/http"
 	"net/http/httptest"
 	"testing"

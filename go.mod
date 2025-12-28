@@ -1,4 +1,4 @@
-module github.com/t-kuni/go-web-api-template
+module github.com/t-kuni/cqrs-example
 
 go 1.24.0
 

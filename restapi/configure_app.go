@@ -6,20 +6,20 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/joho/godotenv"
-	useCaseCompanies "github.com/t-kuni/go-web-api-template/application/handler"
-	"github.com/t-kuni/go-web-api-template/di"
-	"github.com/t-kuni/go-web-api-template/domain/infrastructure/system"
-	middleware2 "github.com/t-kuni/go-web-api-template/middleware"
-	"github.com/t-kuni/go-web-api-template/restapi/operations/companies"
-	"github.com/t-kuni/go-web-api-template/restapi/operations/todos"
-	"github.com/t-kuni/go-web-api-template/restapi/operations/user"
+	useCaseCompanies "github.com/t-kuni/cqrs-example/application/handler"
+	"github.com/t-kuni/cqrs-example/di"
+	"github.com/t-kuni/cqrs-example/domain/infrastructure/system"
+	middleware2 "github.com/t-kuni/cqrs-example/middleware"
+	"github.com/t-kuni/cqrs-example/restapi/operations/companies"
+	"github.com/t-kuni/cqrs-example/restapi/operations/todos"
+	"github.com/t-kuni/cqrs-example/restapi/operations/user"
 	"go.uber.org/fx"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/go-openapi/runtime"
-	"github.com/t-kuni/go-web-api-template/restapi/operations"
+	"github.com/t-kuni/cqrs-example/restapi/operations"
 )
 
 //go:generate go tool swagger generate server --target ../ --name App --spec ../swagger.yml --model-package restapi/models --principal interface{}
