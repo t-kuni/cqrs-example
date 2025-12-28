@@ -1,0 +1,12 @@
+---
+description: リサーチレポート(research)執筆ガイドライン。参照条件： リサーチレポート(research)を作成・編集する
+alwaysApply: false
+---
+
+# リサーチレポート(research)執筆ガイドライン
+
+* `./research/[YYYYMMDD_hhmm]_[任意のファイル名].md` に調査結果をまとめる
+  * `YYYYMMDD_hhmm` は現在日時
+    * `date +"%Y%m%d_%H%M"` コマンドで取得可能
+  * 任意のファイル名は英語のスネークケース
+* 連番は付与しない（修正コストが高くなるため）
