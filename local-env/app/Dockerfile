@@ -1,21 +1,13 @@
-FROM mcr.microsoft.com/devcontainers/go:1.24 AS dev
-
-# Install Node
-# Reference: https://deb.nodesource.com
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-    apt-get install -y nodejs
-
-# Install claude-code
-RUN npm install -g @anthropic-ai/claude-code
+FROM mcr.microsoft.com/devcontainers/go:1.25 AS dev
 
 USER vscode
 
 # Install air
-RUN curl -sSfL https://raw.githubusercontent.com/cosmtrek/air/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+RUN go install github.com/air-verse/air@latest
 
 WORKDIR /app
 
-FROM golang:1.24-alpine AS prod_build
+FROM golang:1.25-alpine AS prod_build
 
 RUN apk update && apk add --no-cache make curl jq git
 
@@ -31,7 +23,7 @@ COPY ../.. /app
 WORKDIR /app
 RUN make build
 
-FROM golang:1.24-alpine AS prod
+FROM golang:1.25-alpine AS prod
 
 COPY --from=prod_build /app/cmd/app-server/main /app/main
 

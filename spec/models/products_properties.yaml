@@ -1,0 +1,29 @@
+title: products_properties
+x-stoplight:
+  id: mez2iuzg2rici
+type: object
+properties:
+  size:
+    type: string
+    x-stoplight:
+      id: xra8pqv28gwz8
+    enum:
+      - S
+      - M
+      - L
+  latitude:
+    type: string
+    x-stoplight:
+      id: zmt4198r8htdt
+  longitude:
+    type: string
+    x-stoplight:
+      id: e26edqlrkzzgg
+  color:
+    type: string
+    x-stoplight:
+      id: xmcjaxtdwe6py
+    enum:
+      - red
+      - green
+      - blue
