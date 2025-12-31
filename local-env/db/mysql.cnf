@@ -8,6 +8,8 @@ general_log      = 1
 # LOAD DATA LOCAL INFILE を使用するのに必要
 local_infile=1
 
+innodb_buffer_pool_size=64M
+
 [client]
 default-character-set = utf8mb4
 
