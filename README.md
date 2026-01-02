@@ -57,6 +57,24 @@ curl -i "http://localhost/users"
 curl -i "http://localhost/todos"
 ```
 
+# 🟦 OpenSearchの操作方法
+
+### 🟠 インデックスを一覧表示
+
+http://localhost:5601/app/opensearch_index_management_dashboards#/indices
+
+
+### 🟠 インデックスを定義する
+
+http://localhost:5601/app/dev_tools#/console を開き
+
+```
+PUT /[インデックス名を指定する]
+[マッピング定義を記述する]
+```
+
+マッピング定義： spec/openSearchScheme/products.json
+
 # AIにタスクを依頼する
 
 * Claude Codeを使用する場合
