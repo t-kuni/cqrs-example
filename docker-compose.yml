@@ -12,6 +12,8 @@ services:
       - ./:/app
     command: air -d
     restart: always
+  networks:
+    - opensearch-net
 
   db:
     build:

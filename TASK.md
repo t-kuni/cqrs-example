@@ -1,112 +1,112 @@
 # タスク一覧
 
-## 概要
+## フェーズ1: OpenSearch連携基盤の実装
 
-`spec/データモデル.md` の仕様追加に伴い、`commands/seed-v2/main.go` にproductsテーブルのキー・インデックスの退避・復元機能を追加する。
+### 前提条件
 
-**追加された仕様:**
-- productsテーブルについて、各種キーとインデックスの情報を取得・退避しておき、キーとインデックスを削除する
-- レコード登録完了時に復元する
-- information_schema.STATISTICS や information_schema.KEY_COLUMN_USAGE などを活用する
+- OpenSearchには既に `/products` インデックスが `spec/openSearchScheme/products.json` として登録されている
+- 環境変数 `OPENSEARCH_ORIGIN` は各種envファイルに設定済み（値: `http://opensearch-node1:9200`）
 
-**目的:**
-大量データ（100万レコード）のLOAD DATA LOCAL INFILE実行時のパフォーマンス向上のため、productsテーブルのキー・インデックスを一時的に削除し、データ投入後に復元する。
+### OpenSearch APIラッパーの作成
 
-**仕様書:** `spec/データモデル.md`
+- [ ] `domain/infrastructure/api/openSearchApi.go` を作成
+  - インターフェース `IOpenSearchApi` を定義
+  - 以下のメソッドを定義する
+    - `IndexDocument(ctx context.Context, indexName string, documentID string, document string) error`
+      - OpenSearchにドキュメントを登録または更新する
+      - 既に同じドキュメントIDが存在する場合は更新する
+      - `document` はJSON形式の文字列
+  - go docコメントを記載する
+    - 各メソッドの目的と使用場面を記載
+  - モック生成用のコメントを記載
+    - `//go:generate go tool mockgen -source=$GOFILE -destination=${GOFILE}_mock.go -package=$GOPACKAGE`
 
-## タスク
+- [ ] `infrastructure/api/openSearchApi.go` を作成
+  - `domain/infrastructure/api/openSearchApi.go` のインターフェースを実装
+  - `github.com/opensearch-project/opensearch-go` を使用する
+  - 構造体 `OpenSearchApi` を定義
+    - フィールド: `client *opensearch.Client`
+  - コンストラクタ `NewOpenSearchApi() (api.IOpenSearchApi, error)` を実装
+    - 環境変数 `OPENSEARCH_ORIGIN` から接続先を取得
+    - OpenSearchクライアントを初期化
+  - 各メソッドを実装
+    - `IndexDocument`: `client.Index()` を使用
+      - ドキュメントIDを指定することで、既存ドキュメントが存在する場合は更新される
+  - エラーハンドリング: `eris.Wrap` で包んで返す
 
-### productsテーブルのキー・インデックス退避・復元機能の実装
+### Product同期サービスの作成
 
-- [x] `commands/seed-v2/main.go` にキー・インデックスの退避・復元機能を追加
-  - **処理フロー:**
-    1. 各テーブルをTRUNCATE（既存の処理を維持）
-    2. SET FOREIGN_KEY_CHECKS=0（既存の処理を維持）
-    3. SET sql_log_bin=0（既存の処理を維持）
-    4. **【新規】productsテーブルのキー・インデックス情報を取得・退避**
-    5. **【新規】productsテーブルのキー・インデックスを削除**
-    6. 各テーブル用のCSVファイルを生成（既存の処理を維持）
-    7. Users用のトランザクション: BEGIN → LOAD DATA LOCAL INFILE → COMMIT（既存の処理を維持）
-    8. Tenants用のトランザクション: BEGIN → LOAD DATA LOCAL INFILE → COMMIT（既存の処理を維持）
-    9. Categories用のトランザクション: BEGIN → LOAD DATA LOCAL INFILE → COMMIT（既存の処理を維持）
-    10. Products用のトランザクション: BEGIN → LOAD DATA LOCAL INFILE → COMMIT（既存の処理を維持）
-    11. **【新規】productsテーブルのキー・インデックスを復元**
-    12. 完了メッセージを表示（既存の処理を維持）
+- [ ] `domain/service/productTransferService.go` を作成
+  - インターフェース `IProductTransferService` を定義
+  - 以下のメソッドを定義する
+    - `TransferAllProducts(ctx context.Context) error`
+      - RDBの全productをOpenSearchに同期する
+      - 内部で `TransferProduct` を全レコード分ループで呼び出す
+      - エラーが発生した場合は処理を中断する
+    - `TransferProduct(ctx context.Context, productID uuid.UUID) error`
+      - 指定されたproductをOpenSearchに同期する
+      - 既に同じproductIdが存在する場合は更新する
+      - RDBからproduct、tenant、category、userを取得
+      - OpenSearchのドキュメント構造に変換
+        - `spec/openSearchScheme/products.json` を参照
+        - `location` フィールドは `properties.latitude` と `properties.longitude` から生成
+          - 形式: `{"lat": <latitude>, "lon": <longitude>}`
+      - OpenSearchに登録
+  - 構造体 `ProductTransferService` を定義
+    - フィールド:
+      - `DBConnector db.IConnector`
+      - `OpenSearchApi api.IOpenSearchApi`
+  - コンストラクタ `NewProductTransferService(conn db.IConnector, openSearchApi api.IOpenSearchApi) (IProductTransferService, error)` を実装
+  - 各メソッドを実装
+    - `TransferAllProducts`:
+      - RDBから全productのIDを取得
+      - 各productIDに対して `TransferProduct` を呼び出す
+      - エラーが発生した場合は即座に処理を中断して返す
+      - 進捗表示（10000件ごと）
+    - `TransferProduct`:
+      - entを使用してproductを取得
+        - `WithTenant()`, `WithCategory()` でリレーションを取得
+        - tenantから `WithOwner()` でuserを取得
+      - OpenSearchのドキュメント構造に変換
+        - JSON形式の文字列を生成
+        - `location` フィールドについて
+          - `properties.latitude` と `properties.longitude` の両方が存在する場合のみ生成
+          - どちらか一方でもnullの場合は `location` フィールド自体を省略する
+      - `OpenSearchApi.IndexDocument()` を呼び出す
+        - インデックス名は `products` でハードコード
+        - ドキュメントIDにはproductのIDを使用（既存ドキュメントがあれば更新される）
+  - go docコメントを記載
+  - モック生成用のコメントを記載
 
-  - **実装詳細:**
-    - キー・インデックス情報の取得
-      - `information_schema.STATISTICS` テーブルからproductsテーブルのインデックス情報を取得
-      - `information_schema.KEY_COLUMN_USAGE` テーブルから外部キー情報を取得
-      - 取得した情報を構造体に格納して保持
-    - キー・インデックスの削除
-      - PRIMARY KEYは削除しない（削除すると復元が困難なため）
-      - 外部キー制約を削除（`ALTER TABLE products DROP FOREIGN KEY <constraint_name>`）
-      - インデックスを削除（`ALTER TABLE products DROP INDEX <index_name>`）
-      - ※ PRIMARY KEY以外のインデックス・外部キーを削除対象とする
-    - キー・インデックスの復元
-      - 削除時に退避した情報を元に、外部キー制約を再作成（`ALTER TABLE products ADD CONSTRAINT <constraint_name> FOREIGN KEY ...`）
-      - 削除時に退避した情報を元に、インデックスを再作成（`ALTER TABLE products ADD INDEX <index_name> ...`）
-    - エラーハンドリング
-      - キー・インデックスの取得・削除・復元で発生したエラーは適切にハンドリングしてpanicする
-      - 復元に失敗した場合は、どのキー・インデックスの復元に失敗したかをログに出力する
+### コマンドの作成
 
-  - **実装方針:**
-    - キー・インデックス情報を保持する構造体を定義する
-      ```go
-      type IndexInfo struct {
-          IndexName    string
-          ColumnName   string
-          NonUnique    bool
-          IndexType    string
-      }
-      
-      type ForeignKeyInfo struct {
-          ConstraintName      string
-          ColumnName          string
-          ReferencedTableName string
-          ReferencedColumnName string
-      }
-      ```
-    - キー・インデックス情報を取得する関数を実装する
-      ```go
-      func getProductsIndexes(db *sql.DB) ([]IndexInfo, error)
-      func getProductsForeignKeys(db *sql.DB) ([]ForeignKeyInfo, error)
-      ```
-    - キー・インデックスを削除する関数を実装する
-      ```go
-      func dropProductsIndexes(db *sql.DB, indexes []IndexInfo) error
-      func dropProductsForeignKeys(db *sql.DB, fks []ForeignKeyInfo) error
-      ```
-    - キー・インデックスを復元する関数を実装する
-      ```go
-      func restoreProductsIndexes(db *sql.DB, indexes []IndexInfo) error
-      func restoreProductsForeignKeys(db *sql.DB, fks []ForeignKeyInfo) error
-      ```
-    - main関数内の適切な箇所でこれらの関数を呼び出す
+- [ ] `commands/transferProducts/main.go` を作成
+  - 参考: `commands/seed-v2/main.go`
+  - DIコンテナを使用してサービスを取得
+  - `ProductTransferService.TransferAllProducts()` を呼び出す
+  - エラーハンドリングとログ出力を実装
+  - エラーが発生した場合は処理を中断してpanicする
 
-  - **注意事項:**
-    - PRIMARY KEYは削除・復元の対象外とする
-    - 外部キー制約の復元時は、参照先テーブル（tenants, categories）のデータが既に投入されている必要がある
-    - インデックスの復元は、データ投入後に実行する必要がある
-    - `SET FOREIGN_KEY_CHECKS=0` が設定されているため、外部キー制約の削除・復元は慎重に行う
+### DIコンテナへの登録
+
+- [ ] `di/container.go` を編集
+  - `fx.Provide` に以下を追加
+    - `api.NewOpenSearchApi`
+    - `service.NewProductTransferService`
 
 ### ビルド確認
 
-- [x] `make generate` を実行してビルドエラーがないことを確認
-
-## 対象外のタスク
-
-以下のタスクは不要です：
-
-- **動作確認**: 実際にseed-v2を実行してのデータ投入確認は不要（ビルドの確認のみ）
-- **テスト実行**: `make test` の実行は不要
-- **swagger.yml や ent/schema の修正**: 今回の変更では不要
-- **他のテーブル（users, tenants, categories）のキー・インデックス退避・復元**: 仕様書ではproductsテーブルのみが対象
+- [ ] `make generate` を実行してビルドが通ることを確認
+  - エラーが出た場合は修正する
 
 ## 指示者宛ての懸念事項（作業対象外）
 
-特になし。以下の点は確認済み：
+### パフォーマンスについて
 
-- PRIMARY KEYは削除対象外とする（仕様書に追記済み）
-- 外部キー制約の復元タイミングは問題なし（products投入後に復元）
+- 100万件のproductを1件ずつ同期するため、処理時間が長くなる可能性がある
+  - 将来的にパフォーマンスが問題になった場合は `BulkIndexDocuments` を使用したバッチ処理への変更を検討
+
+## 事前修正提案
+
+特になし
 
