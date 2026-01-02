@@ -75,6 +75,12 @@ PUT /[インデックス名を指定する]
 
 マッピング定義： spec/openSearchScheme/products.json
 
+### 🟠 データを同期する
+
+```
+go run commands/transferProducts/main.go
+```
+
 # AIにタスクを依頼する
 
 * Claude Codeを使用する場合

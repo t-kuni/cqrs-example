@@ -6,13 +6,13 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/joho/godotenv"
-	useCaseCompanies "github.com/t-kuni/cqrs-example/application/handler"
+	// useCaseCompanies "github.com/t-kuni/cqrs-example/application/handler"
 	"github.com/t-kuni/cqrs-example/di"
 	"github.com/t-kuni/cqrs-example/domain/infrastructure/system"
 	middleware2 "github.com/t-kuni/cqrs-example/middleware"
-	"github.com/t-kuni/cqrs-example/restapi/operations/companies"
-	"github.com/t-kuni/cqrs-example/restapi/operations/todos"
-	"github.com/t-kuni/cqrs-example/restapi/operations/user"
+	// "github.com/t-kuni/cqrs-example/restapi/operations/companies"
+	// "github.com/t-kuni/cqrs-example/restapi/operations/todos"
+	// "github.com/t-kuni/cqrs-example/restapi/operations/user"
 	"go.uber.org/fx"
 	"log"
 	"net/http"
@@ -60,21 +60,21 @@ func configureAPI(api *operations.AppAPI) http.Handler {
 		logger system.ILogger,
 		customServeError func(http.ResponseWriter, *http.Request, error),
 
-		listTodos *useCaseCompanies.ListTodos,
-		getCompanies *useCaseCompanies.GetCompanies,
-		getCompaniesUsers *useCaseCompanies.GetCompaniesUsers,
-		getUsers *useCaseCompanies.GetUsers,
-		postUser *useCaseCompanies.PostUser,
+		// listTodos *useCaseCompanies.ListTodos,
+		// getCompanies *useCaseCompanies.GetCompanies,
+		// getCompaniesUsers *useCaseCompanies.GetCompaniesUsers,
+		// getUsers *useCaseCompanies.GetUsers,
+		// postUser *useCaseCompanies.PostUser,
 	) {
 		api.ServeError = customServeError
 		middlewares.recoverHandler = recoverHandler.Recover
 		middlewares.accessLog = accessLog.AccessLog
 
-		api.TodosGetTodosHandler = todos.GetTodosHandlerFunc(listTodos.Main)
-		api.CompaniesGetCompaniesHandler = companies.GetCompaniesHandlerFunc(getCompanies.Main)
-		api.CompaniesGetCompaniesUsersHandler = companies.GetCompaniesUsersHandlerFunc(getCompaniesUsers.Main)
-		api.UserGetUsersHandler = user.GetUsersHandlerFunc(getUsers.Main)
-		api.UserPostUsersHandler = user.PostUsersHandlerFunc(postUser.Main)
+		// api.TodosGetTodosHandler = todos.GetTodosHandlerFunc(listTodos.Main)
+		// api.CompaniesGetCompaniesHandler = companies.GetCompaniesHandlerFunc(getCompanies.Main)
+		// api.CompaniesGetCompaniesUsersHandler = companies.GetCompaniesUsersHandlerFunc(getCompaniesUsers.Main)
+		// api.UserGetUsersHandler = user.GetUsersHandlerFunc(getUsers.Main)
+		// api.UserPostUsersHandler = user.PostUsersHandlerFunc(postUser.Main)
 	}))
 	err := app.Start(ctx)
 	if err != nil {

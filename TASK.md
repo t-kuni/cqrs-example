@@ -9,7 +9,7 @@
 
 ### OpenSearch APIラッパーの作成
 
-- [ ] `domain/infrastructure/api/openSearchApi.go` を作成
+- [x] `domain/infrastructure/api/openSearchApi.go` を作成
   - インターフェース `IOpenSearchApi` を定義
   - 以下のメソッドを定義する
     - `IndexDocument(ctx context.Context, indexName string, documentID string, document string) error`
@@ -21,7 +21,7 @@
   - モック生成用のコメントを記載
     - `//go:generate go tool mockgen -source=$GOFILE -destination=${GOFILE}_mock.go -package=$GOPACKAGE`
 
-- [ ] `infrastructure/api/openSearchApi.go` を作成
+- [x] `infrastructure/api/openSearchApi.go` を作成
   - `domain/infrastructure/api/openSearchApi.go` のインターフェースを実装
   - `github.com/opensearch-project/opensearch-go` を使用する
   - 構造体 `OpenSearchApi` を定義
@@ -36,7 +36,7 @@
 
 ### Product同期サービスの作成
 
-- [ ] `domain/service/productTransferService.go` を作成
+- [x] `domain/service/productTransferService.go` を作成
   - インターフェース `IProductTransferService` を定義
   - 以下のメソッドを定義する
     - `TransferAllProducts(ctx context.Context) error`
@@ -80,7 +80,7 @@
 
 ### コマンドの作成
 
-- [ ] `commands/transferProducts/main.go` を作成
+- [x] `commands/transferProducts/main.go` を作成
   - 参考: `commands/seed-v2/main.go`
   - DIコンテナを使用してサービスを取得
   - `ProductTransferService.TransferAllProducts()` を呼び出す
@@ -89,14 +89,14 @@
 
 ### DIコンテナへの登録
 
-- [ ] `di/container.go` を編集
+- [x] `di/container.go` を編集
   - `fx.Provide` に以下を追加
     - `api.NewOpenSearchApi`
     - `service.NewProductTransferService`
 
 ### ビルド確認
 
-- [ ] `make generate` を実行してビルドが通ることを確認
+- [x] `make generate` を実行してビルドが通ることを確認
   - エラーが出た場合は修正する
 
 ## 指示者宛ての懸念事項（作業対象外）

@@ -23,6 +23,7 @@ require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.12.0
+	github.com/opensearch-project/opensearch-go/v2 v2.3.0
 	github.com/romanyx/polluter v1.2.2
 	github.com/rotisserie/eris v0.5.4
 	github.com/sirupsen/logrus v1.9.3
@@ -88,7 +89,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/opensearch-project/opensearch-go v1.1.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect

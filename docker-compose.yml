@@ -12,8 +12,6 @@ services:
       - ./:/app
     command: air -d
     restart: always
-  networks:
-    - opensearch-net
 
   db:
     build:
@@ -62,9 +60,7 @@ services:
       - opensearch-data1:/usr/share/opensearch/data # Creates volume called opensearch-data1 and mounts it to the container
     ports:
       - 9200:9200 # REST API
-      - 9600:9600 # Performance Analyzer
-    networks:
-      - opensearch-net # All of the containers will join the same Docker bridge network
+      - 9600:9600 # Performance Analyzer # All of the containers will join the same Docker bridge network
   opensearch-node2:
     image: opensearchproject/opensearch:latest
     container_name: opensearch-node2
@@ -85,9 +81,7 @@ services:
         soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
         hard: 65536
     volumes:
-      - opensearch-data2:/usr/share/opensearch/data # Creates volume called opensearch-data2 and mounts it to the container
-    networks:
-      - opensearch-net # All of the containers will join the same Docker bridge network
+      - opensearch-data2:/usr/share/opensearch/data # Creates volume called opensearch-data2 and mounts it to the container # All of the containers will join the same Docker bridge network
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:latest
     container_name: opensearch-dashboards
@@ -98,13 +92,8 @@ services:
     environment:
       - 'OPENSEARCH_HOSTS=["http://opensearch-node1:9200","http://opensearch-node2:9200"]'
       - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true" # disables security dashboards plugin in OpenSearch Dashboards
-    networks:
-      - opensearch-net
 
 volumes:
   db-data:
   opensearch-data1:
   opensearch-data2:
-
-networks:
-  opensearch-net:

@@ -30,10 +30,12 @@ func NewApp(opts ...fx.Option) *fx.App {
 
 			// Service
 			service.NewExampleService,
+			service.NewProductTransferService,
 
 			// Infrastructure
 			db.NewConnector,
 			api.NewBinanceApi,
+			api.NewOpenSearchApi,
 			system.NewTimer,
 			system.NewLogger,
 			system.NewUuidGenerator,
