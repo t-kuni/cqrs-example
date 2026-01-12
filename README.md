@@ -63,6 +63,8 @@ curl -i "http://localhost/todos"
 
 http://localhost:5601/app/opensearch_index_management_dashboards#/indices
 
+http://localhost:5601/app/management/opensearch-dashboards/indexPatterns
+
 
 ### 🟠 インデックスを定義する
 
@@ -73,12 +75,40 @@ PUT /[インデックス名を指定する]
 [マッピング定義を記述する]
 ```
 
+インデックス定義を確認する
+
+```
+GET /[インデックス名を指定する]/_mapping
+```
+
 マッピング定義： spec/openSearchScheme/products.json
 
 ### 🟠 データを同期する
 
 ```
 go run commands/transferProducts/main.go
+```
+
+### 🟠 ドキュメントを検索する
+
+http://localhost:5601/app/dev_tools#/console を開き
+
+```
+GET /products/_search
+{
+  "profile": true,
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "user.id": "9863380e-0a30-43b5-9bc8-5e749da4282c"
+          }
+        }
+      ]
+    }
+  }
+}
 ```
 
 # AIにタスクを依頼する
